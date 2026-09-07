@@ -35,3 +35,12 @@ class DNSRecord(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     hosted_zone = relationship("HostedZone", back_populates="records")
+    
+# Yeh code file ke sabse end mein add karein
+
+class Session(Base):
+    __tablename__ = "sessions"
+
+    id = Column(Integer, primary key=True, index=True)
+    token = Column(String, unique=True, index=True)
+    username = Column(String)

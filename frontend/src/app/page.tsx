@@ -11,22 +11,27 @@ export default function Home() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [hostedZones, setHostedZones] = useState<any[]>([]);
+  const [newZoneName, setNewZoneName] = useState("");
 
-  // Fetch hosted zones when logged in
+  const fetchZones = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/hosted-zones`, {
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setHostedZones(data);
+      } else {
+        setHostedZones([]);
+      }
+    } catch (err) {
+      console.error("Failed to fetch zones", err);
+    }
+  };
+
   useEffect(() => {
     if (isLoggedIn) {
-      fetch(`${API_URL}/api/hosted-zones`, {
-        credentials: "include",
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (Array.isArray(data)) {
-            setHostedZones(data);
-          } else {
-            setHostedZones([]);
-          }
-        })
-        .catch((err) => console.error("Failed to fetch zones", err));
+      fetchZones();
     }
   }, [isLoggedIn]);
 
@@ -57,6 +62,29 @@ export default function Home() {
     }
   };
 
+  const handleCreateZone = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newZoneName) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/hosted-zones`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: newZoneName }),
+        credentials: "include",
+      });
+
+      if (res.ok) {
+        setNewZoneName("");
+        fetchZones(); // Refresh the list
+      }
+    } catch (err) {
+      console.error("Failed to create zone", err);
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await fetch(`${API_URL}/auth/logout`, {
@@ -81,6 +109,26 @@ export default function Home() {
             Log Out
           </button>
         </div>
+
+        {/* Create Hosted Zone Form */}
+        <div className="border p-6 rounded shadow-sm bg-white mb-6">
+          <h2 className="text-lg font-semibold mb-4">Create Hosted Zone</h2>
+          <form onSubmit={handleCreateZone} className="flex gap-4">
+            <input
+              type="text"
+              placeholder="e.g., example.com"
+              className="flex-1 border p-2 rounded"
+              value={newZoneName}
+              onChange={(e) => setNewZoneName(e.target.value)}
+              required
+            />
+            <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+              Create Zone
+            </button>
+          </form>
+        </div>
+
+        {/* Hosted Zones List */}
         <div className="border p-6 rounded shadow-sm bg-white">
           <h2 className="text-lg font-semibold mb-4">Hosted Zones</h2>
           {hostedZones.length === 0 ? (
@@ -88,8 +136,9 @@ export default function Home() {
           ) : (
             <ul className="divide-y">
               {hostedZones.map((zone, index) => (
-                <li key={index} className="py-2 flex justify-between">
-                  <span>{zone.name}</span>
+                <li key={index} className="py-3 flex justify-between items-center">
+                  <span className="font-medium">{zone.name}</span>
+                  <span className="text-sm text-gray-500">ID: {zone.id}</span>
                 </li>
               ))}
             </ul>

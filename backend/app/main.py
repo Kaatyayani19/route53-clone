@@ -9,9 +9,13 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Route53 Clone API")
 
+# Update CORS to specifically allow your Vercel frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://route53-clone-wheat.vercel.app", 
+        "http://localhost:3000"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

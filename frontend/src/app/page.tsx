@@ -11,7 +11,10 @@ export default function Home() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [hostedZones, setHostedZones] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [newZoneName, setNewZoneName] = useState("");
+  const [editingZoneId, setEditingZoneId] = useState<string | null>(null);
+  const [editZoneName, setEditZoneName] = useState("");
 
   const fetchZones = async () => {
     try {
@@ -43,17 +46,12 @@ export default function Home() {
     try {
       const response = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
         credentials: "include",
       });
 
-      if (!response.ok) {
-        throw new Error("Login failed");
-      }
-
+      if (!response.ok) throw new Error("Login failed");
       setIsLoggedIn(true);
     } catch (err: any) {
       setError("Failed to fetch: Invalid credentials or server error.");
@@ -69,9 +67,7 @@ export default function Home() {
     try {
       const res = await fetch(`${API_URL}/api/hosted-zones`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newZoneName }),
         credentials: "include",
       });
@@ -85,6 +81,27 @@ export default function Home() {
     }
   };
 
+  const handleUpdateZone = async (zoneId: string) => {
+    if (!editZoneName) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/hosted-zones/${zoneId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: editZoneName }),
+        credentials: "include",
+      });
+
+      if (res.ok) {
+        setEditingZoneId(null);
+        setEditZoneName("");
+        fetchZones();
+      }
+    } catch (err) {
+      console.error("Failed to update zone", err);
+    }
+  };
+
   const handleDeleteZone = async (zoneId: string) => {
     try {
       const res = await fetch(`${API_URL}/api/hosted-zones/${zoneId}`, {
@@ -92,9 +109,7 @@ export default function Home() {
         credentials: "include",
       });
 
-      if (res.ok) {
-        fetchZones();
-      }
+      if (res.ok) fetchZones();
     } catch (err) {
       console.error("Failed to delete zone", err);
     }
@@ -114,6 +129,11 @@ export default function Home() {
       console.error("Logout failed", err);
     }
   };
+
+  // Filter zones based on search query
+  const filteredZones = hostedZones.filter((zone) =>
+    zone.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   if (isLoggedIn) {
     return (
@@ -143,25 +163,74 @@ export default function Home() {
           </form>
         </div>
 
-        {/* Hosted Zones List */}
+        {/* Search & Hosted Zones List */}
         <div className="border p-6 rounded shadow-sm bg-white">
-          <h2 className="text-lg font-semibold mb-4">Hosted Zones</h2>
-          {hostedZones.length === 0 ? (
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold">Hosted Zones</h2>
+            <input
+              type="text"
+              placeholder="Search zones..."
+              className="border p-2 rounded w-64 text-sm"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          {filteredZones.length === 0 ? (
             <p className="text-gray-500">No hosted zones found.</p>
           ) : (
             <ul className="divide-y">
-              {hostedZones.map((zone) => (
+              {filteredZones.map((zone) => (
                 <li key={zone.id} className="py-4 flex justify-between items-center">
                   <div>
-                    <p className="font-semibold text-lg">{zone.name}</p>
-                    <p className="text-xs text-gray-400">ID: {zone.id}</p>
+                    {editingZoneId === zone.id ? (
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="text"
+                          className="border p-1 rounded text-sm"
+                          value={editZoneName}
+                          onChange={(e) => setEditZoneName(e.target.value)}
+                        />
+                        <button
+                          onClick={() => handleUpdateZone(zone.id)}
+                          className="bg-green-600 text-white px-2 py-1 rounded text-xs"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setEditingZoneId(null)}
+                          className="bg-gray-300 px-2 py-1 rounded text-xs"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="font-semibold text-lg">{zone.name}</p>
+                        <p className="text-xs text-gray-400">ID: {zone.id}</p>
+                      </>
+                    )}
                   </div>
-                  <button
-                    onClick={() => handleDeleteZone(zone.id)}
-                    className="bg-red-100 text-red-600 px-3 py-1 rounded text-sm hover:bg-red-200"
-                  >
-                    Delete
-                  </button>
+
+                  <div className="flex gap-2">
+                    {editingZoneId !== zone.id && (
+                      <button
+                        onClick={() => {
+                          setEditingZoneId(zone.id);
+                          setEditZoneName(zone.name);
+                        }}
+                        className="bg-gray-100 text-gray-700 px-3 py-1 rounded text-sm hover:bg-gray-200"
+                      >
+                        Edit
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDeleteZone(zone.id)}
+                      className="bg-red-100 text-red-600 px-3 py-1 rounded text-sm hover:bg-red-200"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>

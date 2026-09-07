@@ -1,191 +1,153 @@
-"use client";
-
+"client";
 import { useState, useEffect } from "react";
 
-
-interface HostedZone {
-  id: string;
-  name: string;
-  comment: string | null;
-  record_count: number;
-  created_at: string;
-}
-
-export default function Dashboard() {
-  const API_BASE_URL = "http://localhost:8000";
-  const [zones, setZones] = useState<HostedZone[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Form state for creating zone
-  const [name, setName] = useState("");
+export default function Home() {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState("");
+  const [hostedZones, setHostedZones] = useState([]);
+  const [newDomain, setNewDomain] = useState("");
   const [comment, setComment] = useState("");
+  const [error, setError] = useState("");
 
-  // Search state for filtering
-  const [searchQuery, setSearchQuery] = useState("");
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://route53-clone-1-0xn7.onrender.com";
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Invalid credentials");
+      const data = await res.json();
+      setIsLoggedIn(true);
+      setCurrentUser(data.username);
+      fetchZones();
+    } catch (err: any) {
+      setError(err.message || "Login failed");
+    }
+  };
+
+  const handleLogout = async () => {
+    await fetch(`${API_URL}/auth/logout`, { method: "POST", credentials: "include" });
+    setIsLoggedIn(false);
+    setCurrentUser("");
+  };
 
   const fetchZones = async () => {
     try {
-      setLoading(true);
-      const res = await fetch(`${API_BASE_URL}/api/hosted-zones`);
-      if (!res.ok) throw new Error("Failed to fetch hosted zones");
+      const res = await fetch(`${API_URL}/hosted-zones/`, { credentials: "include" });
       const data = await res.json();
-      setZones(data);
-      setError(null);
-    } catch (err: any) {
-      setError(err.message || "Something went wrong");
-    } finally {
-      setLoading(false);
+      setHostedZones(data);
+    } catch (err) {
+      console.error("Failed to fetch zones");
     }
   };
 
-  useEffect(() => {
-    fetchZones();
-  }, []);
-
-  const handleCreateZone = async (e: React.FormEvent) => {
+  const createZone = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name) return;
-
     try {
-      const res = await fetch(`${API_BASE_URL}/api/hosted-zones`, {
+      const res = await fetch(`${API_URL}/hosted-zones/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, comment }),
+        body: JSON.stringify({ domain_name: newDomain, comment }),
+        credentials: "include",
       });
-
-      if (!res.ok) throw new Error("Failed to create hosted zone");
-
-      setName("");
-      setComment("");
-      fetchZones();
-    } catch (err: any) {
-      alert(err.message);
+      if (res.ok) {
+        setNewDomain("");
+        setComment("");
+        fetchZones();
+      }
+    } catch (err) {
+      console.error("Failed to create zone");
     }
   };
 
-  const handleDeleteZone = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this hosted zone?")) return;
-
-    try {
-      const res = await fetch(`http://localhost:8000/api/hosted-zones/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!res.ok) throw new Error("Failed to delete hosted zone");
-      fetchZones();
-    } catch (err: any) {
-      alert(err.message);
-    }
-  };
-
-  // Filtered zones based on search input
-  const filteredZones = zones.filter((zone) =>
-    zone.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 p-8">
-      <div className="max-w-6xl mx-auto">
-        <header className="border-b pb-4 mb-6 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-orange-600">Amazon Route 53</h1>
-            <p className="text-sm text-gray-600">Hosted zones dashboard clone</p>
-          </div>
-          <span className="text-xs bg-orange-100 text-orange-800 px-3 py-1 rounded-full font-medium">
-            Connected to FastAPI
-          </span>
-        </header>
-
-        {error && (
-          <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6 text-red-700 text-sm">
-            Backend Connection Error: {error}
-          </div>
-        )}
-
-        {/* Create Zone Form */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border mb-8">
-          <h2 className="text-lg font-semibold mb-4">Create Hosted Zone</h2>
-          <form onSubmit={handleCreateZone} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+  if (!isLoggedIn) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-gray-100">
+        <form onSubmit={handleLogin} className="p-8 bg-white shadow-md rounded-lg w-96">
+          <h1 className="text-2xl font-bold mb-6 text-gray-800">Route 53 Login</h1>
+          {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm mb-2">Username</label>
             <input
               type="text"
-              placeholder="Domain name (e.g., example.com)"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="border rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full p-2 border rounded text-black"
               required
             />
+          </div>
+          <div className="mb-6">
+            <label className="block text-gray-700 text-sm mb-2">Password</label>
             <input
-              type="text"
-              placeholder="Comment (optional)"
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              className="border rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
-            />
-            <button
-              type="submit"
-              className="bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-4 rounded text-sm transition"
-            >
-              Create Hosted Zone
-            </button>
-          </form>
-        </div>
-
-        {/* Hosted Zones Section with Search */}
-        <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-          <div className="p-4 border-b bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <h2 className="font-semibold">Hosted Zones ({filteredZones.length})</h2>
-            <input
-              type="text"
-              placeholder="Search domains..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="border rounded px-3 py-1.5 text-sm w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full p-2 border rounded text-black"
+              required
             />
           </div>
+          <button type="submit" className="w-full bg-orange-600 text-white p-2 rounded hover:bg-orange-700">
+            Log In
+          </button>
+        </form>
+      </main>
+    );
+  }
 
-          {loading ? (
-            <div className="p-8 text-center text-gray-500">Loading hosted zones...</div>
-          ) : filteredZones.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">No hosted zones match your search.</div>
-          ) : (
-            <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="border-b bg-gray-100 text-gray-600">
-                  <th className="p-3">Domain Name</th>
-                  <th className="p-3">Comment</th>
-                  <th className="p-3">Records</th>
-                  <th className="p-3">Created At</th>
-                  <th className="p-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredZones.map((zone) => (
-                  <tr key={zone.id} className="border-b hover:bg-gray-50">
-                    <td
-                      className="p-3 font-medium text-blue-600 hover:underline cursor-pointer"
-                      onClick={() => window.location.href = `/zones/${zone.id}`}
-                    >
-                      {zone.name}
-                    </td>
-                    <td className="p-3 text-gray-600">{zone.comment || "-"}</td>
-                    <td className="p-3">{zone.record_count}</td>
-                    <td className="p-3 text-gray-500">{new Date(zone.created_at).toLocaleString()}</td>
-                    <td className="p-3 text-right">
-                      <button
-                        onClick={() => handleDeleteZone(zone.id)}
-                        className="text-red-600 hover:text-red-800 font-medium text-xs border border-red-200 px-2.5 py-1 rounded hover:bg-red-50 transition"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+  return (
+    <main className="p-8 bg-gray-100 min-h-screen">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Amazon Route 53</h1>
+          <p className="text-sm text-gray-600">Logged in as: <b>{currentUser}</b></p>
         </div>
+        <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+          Logout
+        </button>
       </div>
-    </div>
+
+      <div className="bg-white p-6 rounded shadow-md mb-6">
+        <h2 className="text-xl font-semibold mb-4 text-black">Create Hosted Zone</h2>
+        <form onSubmit={createZone} className="flex gap-4">
+          <input
+            type="text"
+            placeholder="Domain name (e.g., example.com)"
+            value={newDomain}
+            onChange={(e) => setNewDomain(e.target.value)}
+            className="p-2 border rounded flex-1 text-black"
+            required
+          />
+          <input
+            type="text"
+            placeholder="Comment (optional)"
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            className="p-2 border rounded flex-1 text-black"
+          />
+          <button type="submit" className="bg-orange-600 text-white px-6 py-2 rounded hover:bg-orange-700">
+            Create
+          </button>
+        </form>
+      </div>
+
+      <div className="bg-white p-6 rounded shadow-md">
+        <h2 className="text-xl font-semibold mb-4 text-black">Hosted Zones ({hostedZones.length})</h2>
+        <ul className="divide-y divide-gray-200">
+          {hostedZones.map((zone: any) => (
+            <li key={zone.id} className="py-3 flex justify-between text-black">
+              <span>{zone.domain_name}</span>
+              <span className="text-gray-500">{zone.comment || "No comment"}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </main>
   );
 }

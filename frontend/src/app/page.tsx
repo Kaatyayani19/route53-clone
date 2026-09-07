@@ -1,4 +1,4 @@
-"client";
+"use client";
 import { useState, useEffect } from "react";
 
 export default function Home() {
@@ -10,6 +10,7 @@ export default function Home() {
   const [newDomain, setNewDomain] = useState("");
   const [comment, setComment] = useState("");
   const [error, setError] = useState("");
+  const [checkingSession, setCheckingSession] = useState(true);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://route53-clone-1-0xn7.onrender.com";
 

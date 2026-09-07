@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { API_BASE_URL } from "@/config/api";
 
 interface DnsRecord {
   id: string;

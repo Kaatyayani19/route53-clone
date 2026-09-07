@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { API_BASE_URL } from "@/config/api";
 
 interface HostedZone {
   id: string;
@@ -15,14 +16,17 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Form state
+  // Form state for creating zone
   const [name, setName] = useState("");
   const [comment, setComment] = useState("");
+
+  // Search state for filtering
+  const [searchQuery, setSearchQuery] = useState("");
 
   const fetchZones = async () => {
     try {
       setLoading(true);
-      const res = await fetch("http://localhost:8000/api/hosted-zones");
+      const res = await fetch(`${API_BASE_URL}/api/hosted-zones`);
       if (!res.ok) throw new Error("Failed to fetch hosted zones");
       const data = await res.json();
       setZones(data);
@@ -43,7 +47,7 @@ export default function Dashboard() {
     if (!name) return;
 
     try {
-      const res = await fetch("http://localhost:8000/api/hosted-zones", {
+      const res = await fetch(`${API_BASE_URL}/api/hosted-zones`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, comment }),
@@ -53,7 +57,7 @@ export default function Dashboard() {
 
       setName("");
       setComment("");
-      fetchZones(); // Refresh the list
+      fetchZones();
     } catch (err: any) {
       alert(err.message);
     }
@@ -74,10 +78,14 @@ export default function Dashboard() {
     }
   };
 
+  // Filtered zones based on search input
+  const filteredZones = zones.filter((zone) =>
+    zone.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 p-8">
       <div className="max-w-6xl mx-auto">
-        {/* AWS Header style */}
         <header className="border-b pb-4 mb-6 flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold text-orange-600">Amazon Route 53</h1>
@@ -90,7 +98,7 @@ export default function Dashboard() {
 
         {error && (
           <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6 text-red-700 text-sm">
-            Backend Connection Error: {error} (Make sure your FastAPI server is running on port 8000)
+            Backend Connection Error: {error}
           </div>
         )}
 
@@ -122,16 +130,23 @@ export default function Dashboard() {
           </form>
         </div>
 
-        {/* Hosted Zones Table */}
+        {/* Hosted Zones Section with Search */}
         <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-          <div className="p-4 border-b bg-gray-50">
-            <h2 className="font-semibold">Hosted Zones ({zones.length})</h2>
+          <div className="p-4 border-b bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <h2 className="font-semibold">Hosted Zones ({filteredZones.length})</h2>
+            <input
+              type="text"
+              placeholder="Search domains..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="border rounded px-3 py-1.5 text-sm w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+            />
           </div>
 
           {loading ? (
             <div className="p-8 text-center text-gray-500">Loading hosted zones...</div>
-          ) : zones.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">No hosted zones found. Create your first one above!</div>
+          ) : filteredZones.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">No hosted zones match your search.</div>
           ) : (
             <table className="w-full text-left border-collapse text-sm">
               <thead>
@@ -144,9 +159,9 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {zones.map((zone) => (
+                {filteredZones.map((zone) => (
                   <tr key={zone.id} className="border-b hover:bg-gray-50">
-                    <td 
+                    <td
                       className="p-3 font-medium text-blue-600 hover:underline cursor-pointer"
                       onClick={() => window.location.href = `/zones/${zone.id}`}
                     >

@@ -41,6 +41,6 @@ class DNSRecord(Base):
 class Session(Base):
     __tablename__ = "sessions"
 
-    id = Column(Integer, primary key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)
     token = Column(String, unique=True, index=True)
     username = Column(String)

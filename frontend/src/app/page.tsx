@@ -1,154 +1,139 @@
 "use client";
-import { useState, useEffect } from "react";
+
+import { useState, useEffect } from 'react';
+
+const API_URL = "https://route53-clone-1-0xn7.onrender.com";
 
 export default function Home() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentUser, setCurrentUser] = useState("");
-  const [hostedZones, setHostedZones] = useState([]);
-  const [newDomain, setNewDomain] = useState("");
-  const [comment, setComment] = useState("");
   const [error, setError] = useState("");
-  const [checkingSession, setCheckingSession] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [hostedZones, setHostedZones] = useState<any[]>([]);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://route53-clone-1-0xn7.onrender.com";
+  // Fetch hosted zones when logged in
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetch(`${API_URL}/api/hosted-zones`, {
+        credentials: "include",
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setHostedZones(data);
+          } else {
+            setHostedZones([]);
+          }
+        })
+        .catch((err) => console.error("Failed to fetch zones", err));
+    }
+  }, [isLoggedIn]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    setError("");
+
     try {
-      const res = await fetch(`${API_URL}/auth/login`, {
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ username, password }),
         credentials: "include",
       });
-      if (!res.ok) throw new Error("Invalid credentials");
-      const data = await res.json();
+
+      if (!response.ok) {
+        throw new Error("Login failed");
+      }
+
       setIsLoggedIn(true);
-      setCurrentUser(data.username);
-      fetchZones();
     } catch (err: any) {
-      setError(err.message || "Login failed");
+      setError("Failed to fetch: Invalid credentials or server error.");
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleLogout = async () => {
-    await fetch(`${API_URL}/auth/logout`, { method: "POST", credentials: "include" });
-    setIsLoggedIn(false);
-    setCurrentUser("");
-  };
-
-  const fetchZones = async () => {
     try {
-      const res = await fetch(`${API_URL}/hosted-zones/`, { credentials: "include" });
-      const data = await res.json();
-      setHostedZones(data);
-    } catch (err) {
-      console.error("Failed to fetch zones");
-    }
-  };
-
-  const createZone = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const res = await fetch(`${API_URL}/hosted-zones/`, {
+      await fetch(`${API_URL}/auth/logout`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domain_name: newDomain, comment }),
         credentials: "include",
       });
-      if (res.ok) {
-        setNewDomain("");
-        setComment("");
-        fetchZones();
-      }
+      setIsLoggedIn(false);
+      setUsername("");
+      setPassword("");
+      setHostedZones([]);
     } catch (err) {
-      console.error("Failed to create zone");
+      console.error("Logout failed", err);
     }
   };
 
-  if (!isLoggedIn) {
+  if (isLoggedIn) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-gray-100">
-        <form onSubmit={handleLogin} className="p-8 bg-white shadow-md rounded-lg w-96">
-          <h1 className="text-2xl font-bold mb-6 text-gray-800">Route 53 Login</h1>
-          {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm mb-2">Username</label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full p-2 border rounded text-black"
-              required
-            />
-          </div>
-          <div className="mb-6">
-            <label className="block text-gray-700 text-sm mb-2">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-2 border rounded text-black"
-              required
-            />
-          </div>
-          <button type="submit" className="w-full bg-orange-600 text-white p-2 rounded hover:bg-orange-700">
-            Log In
+      <div className="p-8 max-w-4xl mx-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">Route 53 Dashboard</h1>
+          <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded">
+            Log Out
           </button>
-        </form>
-      </main>
+        </div>
+        <div className="border p-6 rounded shadow-sm bg-white">
+          <h2 className="text-lg font-semibold mb-4">Hosted Zones</h2>
+          {hostedZones.length === 0 ? (
+            <p className="text-gray-500">No hosted zones found.</p>
+          ) : (
+            <ul className="divide-y">
+              {hostedZones.map((zone, index) => (
+                <li key={index} className="py-2 flex justify-between">
+                  <span>{zone.name}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
     );
   }
 
   return (
-    <main className="p-8 bg-gray-100 min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Amazon Route 53</h1>
-          <p className="text-sm text-gray-600">Logged in as: <b>{currentUser}</b></p>
-        </div>
-        <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
-          Logout
-        </button>
-      </div>
-
-      <div className="bg-white p-6 rounded shadow-md mb-6">
-        <h2 className="text-xl font-semibold mb-4 text-black">Create Hosted Zone</h2>
-        <form onSubmit={createZone} className="flex gap-4">
-          <input
-            type="text"
-            placeholder="Domain name (e.g., example.com)"
-            value={newDomain}
-            onChange={(e) => setNewDomain(e.target.value)}
-            className="p-2 border rounded flex-1 text-black"
-            required
-          />
-          <input
-            type="text"
-            placeholder="Comment (optional)"
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            className="p-2 border rounded flex-1 text-black"
-          />
-          <button type="submit" className="bg-orange-600 text-white px-6 py-2 rounded hover:bg-orange-700">
-            Create
+    <div className="flex h-screen items-center justify-center bg-gray-50">
+      <div className="bg-white p-8 rounded-lg shadow-md w-96">
+        <h1 className="text-xl font-bold mb-4">Route 53 Login</h1>
+        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+        <form onSubmit={handleLogin}>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Username</label>
+            <input
+              type="text"
+              className="w-full border p-2 rounded"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+          </div>
+          <div className="mb-6">
+            <label className="block text-sm font-medium mb-1">Password</label>
+            <input
+              type="password"
+              className="w-full border p-2 rounded"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-orange-600 text-white p-2 rounded hover:bg-orange-700"
+          >
+            {loading ? "Logging in..." : "Log In"}
           </button>
         </form>
       </div>
-
-      <div className="bg-white p-6 rounded shadow-md">
-        <h2 className="text-xl font-semibold mb-4 text-black">Hosted Zones ({hostedZones.length})</h2>
-        <ul className="divide-y divide-gray-200">
-          {hostedZones.map((zone: any) => (
-            <li key={zone.id} className="py-3 flex justify-between text-black">
-              <span>{zone.domain_name}</span>
-              <span className="text-gray-500">{zone.comment || "No comment"}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </main>
+    </div>
   );
 }

@@ -1,68 +1,60 @@
+from pydantic import BaseModel
+from typing import Optional
 from datetime import datetime
-from typing import Optional, List
-from pydantic import BaseModel, Field
 
-
-# ---------- Auth ----------
+# --- Auth Schemas ---
 class LoginRequest(BaseModel):
     username: str
     password: str
 
-
-class UserOut(BaseModel):
-    username: str
-
-
-# ---------- Hosted Zones ----------
-class HostedZoneCreate(BaseModel):
-    domain_name: str = Field(..., min_length=1)
-    type: str = "Public"
-    comment: str = ""
-
-
-class HostedZoneUpdate(BaseModel):
-    comment: Optional[str] = None
-    type: Optional[str] = None
-
-
-class HostedZoneOut(BaseModel):
+class UserResponse(BaseModel):
     id: str
-    domain_name: str
-    type: str
-    comment: str
-    created_at: datetime
-    record_count: int = 0
+    username: str
 
     class Config:
         from_attributes = True
 
-
-# ---------- DNS Records ----------
-VALID_RECORD_TYPES = ["A", "AAAA", "CNAME", "TXT", "MX", "NS", "PTR", "SRV", "CAA"]
-
-
+# --- DNS Record Schemas ---
 class DNSRecordCreate(BaseModel):
-    name: str = Field(..., min_length=1)
-    type: str
-    value: str = Field(..., min_length=1)
-    ttl: int = 300
-
+    name: str
+    type: str # e.g. "A", "CNAME", "TXT"
+    ttl: Optional[int] = 300
+    value: str
 
 class DNSRecordUpdate(BaseModel):
     name: Optional[str] = None
     type: Optional[str] = None
-    value: Optional[str] = None
     ttl: Optional[int] = None
+    value: Optional[str] = None
 
-
-class DNSRecordOut(BaseModel):
+class DNSRecordResponse(BaseModel):
     id: str
     hosted_zone_id: str
     name: str
     type: str
-    value: str
     ttl: int
+    value: str
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+# --- Hosted Zone Schemas ---
+class HostedZoneCreate(BaseModel):
+    name: str
+    comment: Optional[str] = None
+
+class HostedZoneUpdate(BaseModel):
+    comment: Optional[str] = None
+
+class HostedZoneResponse(BaseModel):
+    id: str
+    name: str
+    comment: Optional[str] = None
+    record_count: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+HostedZoneOut = HostedZoneResponse

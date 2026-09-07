@@ -1,109 +1,60 @@
-from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session as DBSession
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from typing import List
 
-from app.database import get_db
-from app import models, schemas
-from app.auth import get_current_user
-from app.schemas import VALID_RECORD_TYPES
+from .. import models, schemas
+from ..database import get_db
 
-router = APIRouter(prefix="/api/hosted-zones/{zone_id}/records", tags=["records"])
+router = APIRouter(
+    prefix="/api/hosted-zones",
+    tags=["DNS Records"]
+)
 
-
-def _get_zone_or_404(zone_id: str, db: DBSession) -> models.HostedZone:
+@router.post("/{zone_id}/records", response_model=schemas.DNSRecordResponse, status_code=status.HTTP_201_CREATED)
+def create_dns_record(zone_id: str, record: schemas.DNSRecordCreate, db: Session = Depends(get_db)):
+    # Verify hosted zone exists
     zone = db.query(models.HostedZone).filter(models.HostedZone.id == zone_id).first()
     if not zone:
-        raise HTTPException(status_code=404, detail="Hosted zone not found")
-    return zone
-
-
-@router.get("", response_model=List[schemas.DNSRecordOut])
-def list_records(
-    zone_id: str,
-    search: Optional[str] = Query(default=None),
-    type: Optional[str] = Query(default=None),
-    db: DBSession = Depends(get_db),
-    username: str = Depends(get_current_user),
-):
-    _get_zone_or_404(zone_id, db)
-    query = db.query(models.DNSRecord).filter(models.DNSRecord.hosted_zone_id == zone_id)
-    if search:
-        query = query.filter(models.DNSRecord.name.ilike(f"%{search}%"))
-    if type:
-        query = query.filter(models.DNSRecord.type == type)
-    return query.order_by(models.DNSRecord.created_at.asc()).all()
-
-
-@router.post("", response_model=schemas.DNSRecordOut, status_code=201)
-def create_record(
-    zone_id: str,
-    payload: schemas.DNSRecordCreate,
-    db: DBSession = Depends(get_db),
-    username: str = Depends(get_current_user),
-):
-    _get_zone_or_404(zone_id, db)
-    if payload.type not in VALID_RECORD_TYPES:
-        raise HTTPException(status_code=400, detail=f"Invalid record type. Must be one of {VALID_RECORD_TYPES}")
-
-    record = models.DNSRecord(
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Hosted Zone not found")
+    
+    new_record = models.DNSRecord(
         hosted_zone_id=zone_id,
-        name=payload.name.strip(),
-        type=payload.type,
-        value=payload.value.strip(),
-        ttl=payload.ttl,
+        name=record.name,
+        type=record.type,
+        ttl=record.ttl,
+        value=record.value
     )
-    db.add(record)
+    db.add(new_record)
+    
+    # Increment the record count on the hosted zone
+    zone.record_count += 1
+    
     db.commit()
-    db.refresh(record)
-    return record
+    db.refresh(new_record)
+    return new_record
 
+@router.get("/{zone_id}/records", response_model=List[schemas.DNSRecordResponse])
+def get_dns_records(zone_id: str, db: Session = Depends(get_db)):
+    zone = db.query(models.HostedZone).filter(models.HostedZone.id == zone_id).first()
+    if not zone:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Hosted Zone not found")
+    
+    return db.query(models.DNSRecord).filter(models.DNSRecord.hosted_zone_id == zone_id).all()
 
-@router.put("/{record_id}", response_model=schemas.DNSRecordOut)
-def update_record(
-    zone_id: str,
-    record_id: str,
-    payload: schemas.DNSRecordUpdate,
-    db: DBSession = Depends(get_db),
-    username: str = Depends(get_current_user),
-):
-    _get_zone_or_404(zone_id, db)
-    record = db.query(models.DNSRecord).filter(
-        models.DNSRecord.id == record_id,
-        models.DNSRecord.hosted_zone_id == zone_id,
-    ).first()
+@router.delete("/{zone_id}/records/{record_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_dns_record(zone_id: str, record_id: str, db: Session = Depends(get_db)):
+    zone = db.query(models.HostedZone).filter(models.HostedZone.id == zone_id).first()
+    if not zone:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Hosted Zone not found")
+        
+    record = db.query(models.DNSRecord).filter(models.DNSRecord.id == record_id, models.DNSRecord.hosted_zone_id == zone_id).first()
     if not record:
-        raise HTTPException(status_code=404, detail="Record not found")
-
-    if payload.name is not None:
-        record.name = payload.name.strip()
-    if payload.type is not None:
-        if payload.type not in VALID_RECORD_TYPES:
-            raise HTTPException(status_code=400, detail=f"Invalid record type. Must be one of {VALID_RECORD_TYPES}")
-        record.type = payload.type
-    if payload.value is not None:
-        record.value = payload.value.strip()
-    if payload.ttl is not None:
-        record.ttl = payload.ttl
-
-    db.commit()
-    db.refresh(record)
-    return record
-
-
-@router.delete("/{record_id}", status_code=204)
-def delete_record(
-    zone_id: str,
-    record_id: str,
-    db: DBSession = Depends(get_db),
-    username: str = Depends(get_current_user),
-):
-    _get_zone_or_404(zone_id, db)
-    record = db.query(models.DNSRecord).filter(
-        models.DNSRecord.id == record_id,
-        models.DNSRecord.hosted_zone_id == zone_id,
-    ).first()
-    if not record:
-        raise HTTPException(status_code=404, detail="Record not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="DNS Record not found")
+        
     db.delete(record)
+    
+    # Decrement the record count safely
+    if zone.record_count > 0:
+        zone.record_count -= 1
+        
     db.commit()
-    return None

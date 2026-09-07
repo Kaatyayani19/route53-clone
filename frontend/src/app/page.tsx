@@ -15,6 +15,7 @@ export default function Home() {
   const [newZoneName, setNewZoneName] = useState("");
   const [editingZoneId, setEditingZoneId] = useState<string | null>(null);
   const [editZoneName, setEditZoneName] = useState("");
+  const [activeTab, setActiveTab] = useState("hosted-zones");
 
   const fetchZones = async () => {
     try {
@@ -130,112 +131,163 @@ export default function Home() {
     }
   };
 
-  // Filter zones based on search query
   const filteredZones = hostedZones.filter((zone) =>
     zone.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (isLoggedIn) {
     return (
-      <div className="p-8 max-w-4xl mx-auto">
+      <div className="p-8 max-w-5xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Route 53 Dashboard</h1>
+          <h1 className="text-2xl font-bold">Route 53 Clone Dashboard</h1>
           <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
             Log Out
           </button>
         </div>
 
-        {/* Create Hosted Zone Form */}
-        <div className="border p-6 rounded shadow-sm bg-white mb-6">
-          <h2 className="text-lg font-semibold mb-4">Create Hosted Zone</h2>
-          <form onSubmit={handleCreateZone} className="flex gap-4">
-            <input
-              type="text"
-              placeholder="e.g., example.com"
-              className="flex-1 border p-2 rounded"
-              value={newZoneName}
-              onChange={(e) => setNewZoneName(e.target.value)}
-              required
-            />
-            <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-              Create Zone
-            </button>
-          </form>
+        {/* Navigation Tabs */}
+        <div className="flex border-b mb-6 gap-6 text-sm font-medium text-gray-600">
+          <button
+            onClick={() => setActiveTab("dashboard")}
+            className={`pb-2 ${activeTab === "dashboard" ? "border-b-2 border-orange-600 text-orange-600 font-semibold" : "hover:text-black"}`}
+          >
+            Dashboard
+          </button>
+          <button
+            onClick={() => setActiveTab("hosted-zones")}
+            className={`pb-2 ${activeTab === "hosted-zones" ? "border-b-2 border-orange-600 text-orange-600 font-semibold" : "hover:text-black"}`}
+          >
+            Hosted Zones
+          </button>
+          <button
+            onClick={() => setActiveTab("traffic-policies")}
+            className={`pb-2 ${activeTab === "traffic-policies" ? "border-b-2 border-orange-600 text-orange-600 font-semibold" : "hover:text-black"}`}
+          >
+            Traffic Policies
+          </button>
+          <button
+            onClick={() => setActiveTab("health-checks")}
+            className={`pb-2 ${activeTab === "health-checks" ? "border-b-2 border-orange-600 text-orange-600 font-semibold" : "hover:text-black"}`}
+          >
+            Health Checks
+          </button>
+          <button
+            onClick={() => setActiveTab("resolver")}
+            className={`pb-2 ${activeTab === "resolver" ? "border-b-2 border-orange-600 text-orange-600 font-semibold" : "hover:text-black"}`}
+          >
+            Resolver
+          </button>
+          <button
+            onClick={() => setActiveTab("profiles")}
+            className={`pb-2 ${activeTab === "profiles" ? "border-b-2 border-orange-600 text-orange-600 font-semibold" : "hover:text-black"}`}
+          >
+            Profiles
+          </button>
         </div>
 
-        {/* Search & Hosted Zones List */}
-        <div className="border p-6 rounded shadow-sm bg-white">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold">Hosted Zones</h2>
-            <input
-              type="text"
-              placeholder="Search zones..."
-              className="border p-2 rounded w-64 text-sm"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
+        {/* Conditional Content Rendering */}
+        {activeTab === "hosted-zones" ? (
+          <div>
+            {/* Create Hosted Zone Form */}
+            <div className="border p-6 rounded shadow-sm bg-white mb-6">
+              <h2 className="text-lg font-semibold mb-4">Create Hosted Zone</h2>
+              <form onSubmit={handleCreateZone} className="flex gap-4">
+                <input
+                  type="text"
+                  placeholder="e.g., example.com"
+                  className="flex-1 border p-2 rounded"
+                  value={newZoneName}
+                  onChange={(e) => setNewZoneName(e.target.value)}
+                  required
+                />
+                <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                  Create Zone
+                </button>
+              </form>
+            </div>
 
-          {filteredZones.length === 0 ? (
-            <p className="text-gray-500">No hosted zones found.</p>
-          ) : (
-            <ul className="divide-y">
-              {filteredZones.map((zone) => (
-                <li key={zone.id} className="py-4 flex justify-between items-center">
-                  <div>
-                    {editingZoneId === zone.id ? (
-                      <div className="flex gap-2 items-center">
-                        <input
-                          type="text"
-                          className="border p-1 rounded text-sm"
-                          value={editZoneName}
-                          onChange={(e) => setEditZoneName(e.target.value)}
-                        />
+            {/* Search & Hosted Zones List */}
+            <div className="border p-6 rounded shadow-sm bg-white">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold">Hosted Zones</h2>
+                <input
+                  type="text"
+                  placeholder="Search zones..."
+                  className="border p-2 rounded w-64 text-sm"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+
+              {filteredZones.length === 0 ? (
+                <p className="text-gray-500">No hosted zones found.</p>
+              ) : (
+                <ul className="divide-y">
+                  {filteredZones.map((zone) => (
+                    <li key={zone.id} className="py-4 flex justify-between items-center">
+                      <div>
+                        {editingZoneId === zone.id ? (
+                          <div className="flex gap-2 items-center">
+                            <input
+                              type="text"
+                              className="border p-1 rounded text-sm"
+                              value={editZoneName}
+                              onChange={(e) => setEditZoneName(e.target.value)}
+                            />
+                            <button
+                              onClick={() => handleUpdateZone(zone.id)}
+                              className="bg-green-600 text-white px-2 py-1 rounded text-xs"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => setEditingZoneId(null)}
+                              className="bg-gray-300 px-2 py-1 rounded text-xs"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <p className="font-semibold text-lg">{zone.name}</p>
+                            <p className="text-xs text-gray-400">ID: {zone.id}</p>
+                          </>
+                        )}
+                      </div>
+
+                      <div className="flex gap-2">
+                        {editingZoneId !== zone.id && (
+                          <button
+                            onClick={() => {
+                              setEditingZoneId(zone.id);
+                              setEditZoneName(zone.name);
+                            }}
+                            className="bg-gray-100 text-gray-700 px-3 py-1 rounded text-sm hover:bg-gray-200"
+                          >
+                            Edit
+                          </button>
+                        )}
                         <button
-                          onClick={() => handleUpdateZone(zone.id)}
-                          className="bg-green-600 text-white px-2 py-1 rounded text-xs"
+                          onClick={() => handleDeleteZone(zone.id)}
+                          className="bg-red-100 text-red-600 px-3 py-1 rounded text-sm hover:bg-red-200"
                         >
-                          Save
-                        </button>
-                        <button
-                          onClick={() => setEditingZoneId(null)}
-                          className="bg-gray-300 px-2 py-1 rounded text-xs"
-                        >
-                          Cancel
+                          Delete
                         </button>
                       </div>
-                    ) : (
-                      <>
-                        <p className="font-semibold text-lg">{zone.name}</p>
-                        <p className="text-xs text-gray-400">ID: {zone.id}</p>
-                      </>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2">
-                    {editingZoneId !== zone.id && (
-                      <button
-                        onClick={() => {
-                          setEditingZoneId(zone.id);
-                          setEditZoneName(zone.name);
-                        }}
-                        className="bg-gray-100 text-gray-700 px-3 py-1 rounded text-sm hover:bg-gray-200"
-                      >
-                        Edit
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleDeleteZone(zone.id)}
-                      className="bg-red-100 text-red-600 px-3 py-1 rounded text-sm hover:bg-red-200"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        ) : (
+          /* Mocked Coming Soon Page */
+          <div className="border p-12 rounded shadow-sm bg-white text-center">
+            <h2 className="text-2xl font-bold mb-2 capitalize">{activeTab.replace("-", " ")}</h2>
+            <p className="text-gray-500 mb-4">Coming Soon</p>
+            <p className="text-sm text-gray-400">This section is currently under development.</p>
+          </div>
+        )}
       </div>
     );
   }

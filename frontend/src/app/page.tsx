@@ -146,7 +146,12 @@ export default function Dashboard() {
               <tbody>
                 {zones.map((zone) => (
                   <tr key={zone.id} className="border-b hover:bg-gray-50">
-                    <td className="p-3 font-medium text-blue-600">{zone.name}</td>
+                    <td 
+                      className="p-3 font-medium text-blue-600 hover:underline cursor-pointer"
+                      onClick={() => window.location.href = `/zones/${zone.id}`}
+                    >
+                      {zone.name}
+                    </td>
                     <td className="p-3 text-gray-600">{zone.comment || "-"}</td>
                     <td className="p-3">{zone.record_count}</td>
                     <td className="p-3 text-gray-500">{new Date(zone.created_at).toLocaleString()}</td>

@@ -8,7 +8,7 @@ interface DnsRecord {
   name: string;
   type: string;
   ttl: number;
-  values: string[];
+  value: string;
 }
 
 interface HostedZone {
@@ -37,13 +37,11 @@ export default function ZoneDetailsPage() {
   const fetchZoneDetails = async () => {
     try {
       setLoading(true);
-      // Fetch zone info
       const zoneRes = await fetch(`http://localhost:8000/api/hosted-zones/${zoneId}`);
       if (!zoneRes.ok) throw new Error("Failed to fetch hosted zone details");
       const zoneData = await zoneRes.json();
       setZone(zoneData);
 
-      // Fetch DNS records for this zone
       const recordsRes = await fetch(`http://localhost:8000/api/hosted-zones/${zoneId}/records`);
       if (!recordsRes.ok) throw new Error("Failed to fetch DNS records");
       const recordsData = await recordsRes.json();
@@ -75,7 +73,7 @@ export default function ZoneDetailsPage() {
           name: recordName,
           type: recordType,
           ttl: Number(recordTtl),
-          values: [recordValue],
+          value: recordValue,
         }),
       });
 
@@ -207,7 +205,7 @@ export default function ZoneDetailsPage() {
                     <td className="p-3 font-medium text-blue-600">{rec.name}</td>
                     <td className="p-3 font-semibold">{rec.type}</td>
                     <td className="p-3 text-gray-600">{rec.ttl}</td>
-                    <td className="p-3 text-gray-800 font-mono text-xs">{rec.values.join(", ")}</td>
+                    <td className="p-3 text-gray-800 font-mono text-xs">{rec.value}</td>
                     <td className="p-3 text-right">
                       <button
                         onClick={() => handleDeleteRecord(rec.id)}

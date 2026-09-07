@@ -78,10 +78,25 @@ export default function Home() {
 
       if (res.ok) {
         setNewZoneName("");
-        fetchZones(); // Refresh the list
+        fetchZones();
       }
     } catch (err) {
       console.error("Failed to create zone", err);
+    }
+  };
+
+  const handleDeleteZone = async (zoneId: string) => {
+    try {
+      const res = await fetch(`${API_URL}/api/hosted-zones/${zoneId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (res.ok) {
+        fetchZones();
+      }
+    } catch (err) {
+      console.error("Failed to delete zone", err);
     }
   };
 
@@ -105,7 +120,7 @@ export default function Home() {
       <div className="p-8 max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Route 53 Dashboard</h1>
-          <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded">
+          <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
             Log Out
           </button>
         </div>
@@ -135,10 +150,18 @@ export default function Home() {
             <p className="text-gray-500">No hosted zones found.</p>
           ) : (
             <ul className="divide-y">
-              {hostedZones.map((zone, index) => (
-                <li key={index} className="py-3 flex justify-between items-center">
-                  <span className="font-medium">{zone.name}</span>
-                  <span className="text-sm text-gray-500">ID: {zone.id}</span>
+              {hostedZones.map((zone) => (
+                <li key={zone.id} className="py-4 flex justify-between items-center">
+                  <div>
+                    <p className="font-semibold text-lg">{zone.name}</p>
+                    <p className="text-xs text-gray-400">ID: {zone.id}</p>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteZone(zone.id)}
+                    className="bg-red-100 text-red-600 px-3 py-1 rounded text-sm hover:bg-red-200"
+                  >
+                    Delete
+                  </button>
                 </li>
               ))}
             </ul>
